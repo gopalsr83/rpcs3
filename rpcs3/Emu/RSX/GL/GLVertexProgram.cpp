@@ -578,10 +578,13 @@ void GLVertexDecompilerThread::Task()
 			{
 				int addr = GetAddr();
 
-				for (jump_position = 0; jump_position < m_jump_lvls.size(); ++jump_position)
+				jump_position = 0;
+				for (auto pos : m_jump_lvls)
 				{
-					if (m_jump_lvls[jump_position] == addr)
+					if (addr == pos)
 						break;
+
+					++jump_position;
 				}
 			}
 
