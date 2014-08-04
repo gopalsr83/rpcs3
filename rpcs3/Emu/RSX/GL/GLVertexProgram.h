@@ -1,6 +1,7 @@
 #pragma once
 #include "GLShaderParam.h"
 #include "Emu/RSX/RSXVertexProgram.h"
+#include <set>
 
 struct GLVertexDecompilerThread : public ThreadBase
 {
@@ -147,6 +148,8 @@ struct GLVertexDecompilerThread : public ThreadBase
 			put_close_scopes = open_scopes = close_scopes = do_count = 0;
 		}
 	};
+
+	std::set<int> m_jump_lvls;
 
 	static const size_t m_max_instr_count = 512;
 	Instruction m_instructions[m_max_instr_count];
