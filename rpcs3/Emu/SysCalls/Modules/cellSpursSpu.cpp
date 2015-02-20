@@ -10,6 +10,17 @@
 #include "Loader/ELF32.h"
 #include "Emu/FS/vfsStreamMemory.h"
 
+//////////////////////////////////////////////////////////////////////////////
+// Types
+//////////////////////////////////////////////////////////////////////////////
+
+class SpursModuleExit {
+};
+
+//////////////////////////////////////////////////////////////////////////////
+// Function prototypes
+//////////////////////////////////////////////////////////////////////////////
+
 //
 // SPURS utility functions
 //
@@ -66,6 +77,10 @@ s32 spursTasksetProcessSyscall(SPUThread & spu, u32 syscallNum, u32 args);
 void spursTasksetInit(SPUThread & spu, u32 pollStatus);
 s32 spursTasksetLoadElf(SPUThread & spu, u32 * entryPoint, u32 * lowestLoadAddr, u64 elfAddr, bool skipWriteableSegments);
 
+//////////////////////////////////////////////////////////////////////////////
+// Externs
+//////////////////////////////////////////////////////////////////////////////
+
 extern Module cellSpurs;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -101,6 +116,7 @@ u32 cellSpursModulePollStatus(SPUThread & spu, u32 * status) {
 void cellSpursModuleExit(SPUThread & spu) {
     auto ctxt = vm::get_ptr<SpursKernelContext>(spu.ls_offset + 0x100);
     spu.SetBranch(ctxt->exitToKernelAddr);
+    throw SpursModuleExit();
 }
 
 /// Execute a DMA operation
@@ -148,6 +164,7 @@ u32 spursDmaWaitForCompletion(SPUThread & spu, u32 tagMask, bool waitForAll) {
 void spursHalt(SPUThread & spu) {
     spu.SPU.Status.SetValue(SPU_STATUS_STOPPED_BY_HALT);
     spu.Stop();
+    throw SpursModuleExit();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -581,14 +598,20 @@ bool spursSysServiceEntry(SPUThread & spu) {
     auto arg        = spu.GPR[4]._u64[1];
     auto pollStatus = spu.GPR[5]._u32[3];
 
-    if (ctxt->wklCurrentId == CELL_SPURS_SYS_SERVICE_WORKLOAD_ID) {
-        spursSysServiceMain(spu, pollStatus);
-    } else {
-        // TODO: If we reach here it means the current workload was preempted to start the
-        // system workload. Need to implement this.
+    try {
+        if (ctxt->wklCurrentId == CELL_SPURS_SYS_SERVICE_WORKLOAD_ID) {
+            spursSysServiceMain(spu, pollStatus);
+        } else {
+            // TODO: If we reach here it means the current workload was preempted to start the
+            // system workload. Need to implement this.
+        }
+
+        cellSpursModuleExit(spu);
     }
-    
-    cellSpursModuleExit(spu);
+
+    catch (SpursModuleExit) {
+    }
+
     return false;
 }
 
@@ -669,6 +692,10 @@ void spursSysServiceIdleHandler(SPUThread & spu, SpursKernelContext * ctxt) {
             u128 r;
             spu.ReadChannel(r, SPU_RdEventStat);
             spu.WriteChannel(SPU_WrEventAck, u128::from32r(SPU_EVENT_LR));
+
+            if (Emu.IsStopped()) {
+                throw SpursModuleExit();
+            }
         }
 
         auto dmaSuccess = spursDma(spu, MFC_PUTLLC_CMD, ctxt->spurs.addr(), 0x100/*LSA*/, 0x80/*size*/, 0/*tag*/);
@@ -688,7 +715,6 @@ void spursSysServiceMain(SPUThread & spu, u32 pollStatus) {
 
     if (ctxt->spurs.addr() % CellSpurs::align) {
         spursHalt(spu);
-        return;
     }
 
     // Initialise the system service if this is the first time its being started on this SPU
@@ -704,7 +730,6 @@ void spursSysServiceMain(SPUThread & spu, u32 pollStatus) {
             // Halt if already initialised
             if (spurs->m.sysSrvOnSpu & (1 << ctxt->spuNum)) {
                 spursHalt(spu);
-                return;
             }
 
             spurs->m.sysSrvOnSpu |= 1 << ctxt->spuNum;
@@ -1077,11 +1102,17 @@ bool spursTasksetEntry(SPUThread & spu) {
     spu.RegisterHleFunction(CELL_SPURS_TASKSET_PM_ENTRY_ADDR, spursTasksetEntry);
     spu.RegisterHleFunction(ctxt->syscallAddr, spursTasksetSyscallEntry);
 
-    // Initialise the taskset policy module
-    spursTasksetInit(spu, pollStatus);
+    try {
+        // Initialise the taskset policy module
+        spursTasksetInit(spu, pollStatus);
 
-    // Dispatch
-    spursTasksetDispatch(spu);
+        // Dispatch
+        spursTasksetDispatch(spu);
+    }
+
+    catch (SpursModuleExit) {
+    }
+
     return false;
 }
 
@@ -1153,7 +1184,6 @@ s32 spursTasksetProcessRequest(SPUThread & spu, s32 request, u32 * taskId, u32 *
         if ((taskset->m.waiting & taskset->m.running) != _0 || (taskset->m.ready & taskset->m.pending_ready) != _0 ||
             ((taskset->m.running | taskset->m.ready | taskset->m.pending_ready | taskset->m.signalled | taskset->m.waiting) & be_t<u128>::make(~taskset->m.enabled.value())) != _0) {
             spursHalt(spu);
-            return CELL_OK;
         }
 
         // Find the number of tasks that have become ready since the last iteration
@@ -1270,7 +1300,6 @@ s32 spursTasksetProcessRequest(SPUThread & spu, s32 request, u32 * taskId, u32 *
             break;
         default:
             spursHalt(spu);
-            return CELL_OK;
         }
 
         taskset->m.pending_ready = _0;
@@ -1447,7 +1476,6 @@ void spursTasksetDispatch(SPUThread & spu) {
         u32 lowestLoadAddr;
         if (spursTasksetLoadElf(spu, &entryPoint, &lowestLoadAddr, taskInfo->elf_addr.addr(), false) != CELL_OK) {
             spursHalt(spu);
-            return;
         }
 
         spursDmaWaitForCompletion(spu, 1 << ctxt->dmaTagId);
@@ -1488,7 +1516,6 @@ void spursTasksetDispatch(SPUThread & spu) {
             u32 entryPoint;
             if (spursTasksetLoadElf(spu, &entryPoint, nullptr, taskInfo->elf_addr.addr(), true) != CELL_OK) {
                 spursHalt(spu);
-                return;
             }
         }
 
