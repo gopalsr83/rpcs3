@@ -33,7 +33,7 @@ struct Semaphore
 };
 
 // Aux
-u32 semaphore_create(s32 initial_count, s32 max_count, u32 protocol, u64 name_u64);
+void sys_semaphore_attribute_initialize(vm::ptr<sys_semaphore_attribute> attr);
 
 // SysCalls
 s32 sys_semaphore_create(vm::ptr<u32> sem, vm::ptr<sys_semaphore_attribute> attr, s32 initial_count, s32 max_count);

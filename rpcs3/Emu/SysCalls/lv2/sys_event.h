@@ -9,6 +9,11 @@ enum EventQueueType
 	SYS_SPU_QUEUE = 2,
 };
 
+enum EventQueueIpcKey
+{
+	SYS_EVENT_QUEUE_LOCAL = 0x00,
+};
+
 enum EventQueueDestroyMode
 {
 	// DEFAULT = 0,
@@ -20,6 +25,11 @@ enum EventPortType
 	SYS_EVENT_PORT_LOCAL = 1,
 };
 
+enum EventPortName
+{
+	SYS_EVENT_PORT_NO_NAME = 0,
+};
+
 enum EventSourceType
 {
 	SYS_SPU_THREAD_EVENT_USER = 1,
@@ -28,8 +38,9 @@ enum EventSourceType
 
 enum EventSourceKey : u64
 {
-	SYS_SPU_THREAD_EVENT_USER_KEY = 0xFFFFFFFF53505501,
-	/* SYS_SPU_THREAD_EVENT_DMA_KEY = 0xFFFFFFFF53505502, */
+	SYS_SPU_THREAD_EVENT_USER_KEY      = 0xFFFFFFFF53505501ull,
+	SYS_SPU_THREAD_EVENT_DMA_KEY       = 0xFFFFFFFF53505502ull,
+	SYS_SPU_THREAD_EVENT_EXCEPTION_KEY = 0xFFFFFFFF53505503ull,
 };
 
 struct sys_event_queue_attr
@@ -216,7 +227,7 @@ struct EventQueue
 
 // Aux
 u32 event_port_create(u64 name);
-u32 event_queue_create(u32 protocol, s32 type, u64 name_u64, u64 event_queue_key, s32 size);
+void sys_event_queue_attribute_initialize(vm::ptr<sys_event_queue_attr> attr);
 
 // SysCalls
 s32 sys_event_queue_create(vm::ptr<u32> equeue_id, vm::ptr<sys_event_queue_attr> attr, u64 event_queue_key, s32 size);

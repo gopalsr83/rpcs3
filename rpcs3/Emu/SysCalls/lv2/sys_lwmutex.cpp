@@ -12,6 +12,13 @@
 
 SysCallBase sys_lwmutex("sys_lwmutex");
 
+void sys_lwmutex_attribute_initialize(vm::ptr<sys_lwmutex_attribute_t> attr)
+{
+	attr->protocol  = SYS_SYNC_PRIORITY;
+	attr->recursive = SYS_SYNC_NOT_RECURSIVE;
+	attr->name[0]   = '\0';
+}
+
 s32 lwmutex_create(sys_lwmutex_t& lwmutex, u32 protocol, u32 recursive, u64 name_u64)
 {
 	std::shared_ptr<sleep_queue_t> sq(new sleep_queue_t(name_u64));

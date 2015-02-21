@@ -12,6 +12,15 @@
 
 SysCallBase sys_semaphore("sys_semaphore");
 
+void sys_semaphore_attribute_initialize(vm::ptr<sys_semaphore_attribute> attr)
+{
+	attr->protocol = SYS_SYNC_PRIORITY;
+	attr->pshared  = SYS_SYNC_NOT_PROCESS_SHARED;
+	attr->ipc_key  = 0;
+	attr->flags    = 0;
+	attr->name[0]  = '\0';
+}
+
 u32 semaphore_create(s32 initial_count, s32 max_count, u32 protocol, u64 name_u64)
 {
 	std::shared_ptr<Semaphore> sem(new Semaphore(initial_count, max_count, protocol, name_u64));

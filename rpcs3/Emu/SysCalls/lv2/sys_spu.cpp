@@ -440,6 +440,13 @@ s32 sys_spu_thread_group_terminate(u32 id, int value)
 	return CELL_OK;
 }
 
+void sys_spu_thread_group_attribute_initialize(vm::ptr<sys_spu_thread_group_attribute> attr)
+{
+	attr->name  = vm::ptr<const char>::make(0);
+	attr->nsize = 0;
+	attr->type  = SYS_SPU_THREAD_GROUP_TYPE_NORMAL;
+}
+
 std::shared_ptr<SpuGroupInfo> spu_thread_group_create(const std::string& name, u32 num, s32 prio, s32 type, u32 container)
 {
 	if (type)

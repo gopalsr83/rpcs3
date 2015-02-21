@@ -10,82 +10,75 @@
 #include "Loader/ELF32.h"
 #include "Emu/FS/vfsStreamMemory.h"
 
-//////////////////////////////////////////////////////////////////////////////
-// Types
-//////////////////////////////////////////////////////////////////////////////
-
-class SpursModuleExit {
-};
-
-//////////////////////////////////////////////////////////////////////////////
-// Function prototypes
-//////////////////////////////////////////////////////////////////////////////
-
-//
-// SPURS utility functions
-//
-void cellSpursModulePutTrace(CellSpursTracePacket * packet, u32 dmaTagId);
-u32 cellSpursModulePollStatus(SPUThread & spu, u32 * status);
-void cellSpursModuleExit(SPUThread & spu);
-
-bool spursDma(SPUThread & spu, u32 cmd, u64 ea, u32 lsa, u32 size, u32 tag);
-u32 spursDmaGetCompletionStatus(SPUThread & spu, u32 tagMask);
-u32 spursDmaWaitForCompletion(SPUThread & spu, u32 tagMask, bool waitForAll = true);
-void spursHalt(SPUThread & spu);
-
-//
-// SPURS Kernel functions
-//
-bool spursKernel1SelectWorkload(SPUThread & spu);
-bool spursKernel2SelectWorkload(SPUThread & spu);
-void spursKernelDispatchWorkload(SPUThread & spu, u64 widAndPollStatus);
-bool spursKernelWorkloadExit(SPUThread & spu);
-bool spursKernelEntry(SPUThread & spu);
-
-//
-// SPURS System Service functions
-//
-bool spursSysServiceEntry(SPUThread & spu);
-// TODO: Exit
-void spursSysServiceIdleHandler(SPUThread & spu, SpursKernelContext * ctxt);
-void spursSysServiceMain(SPUThread & spu, u32 pollStatus);
-void spursSysServiceProcessRequests(SPUThread & spu, SpursKernelContext * ctxt);
-void spursSysServiceActivateWorkload(SPUThread & spu, SpursKernelContext * ctxt);
-// TODO: Deactivate workload
-void spursSysServiceUpdateShutdownCompletionEvents(SPUThread & spu, SpursKernelContext * ctxt, u32 wklShutdownBitSet);
-void spursSysServiceTraceSaveCount(SPUThread & spu, SpursKernelContext * ctxt);
-void spursSysServiceTraceUpdate(SPUThread & spu, SpursKernelContext * ctxt, u32 arg2, u32 arg3, u32 arg4);
-// TODO: Deactivate trace
-// TODO: System workload entry
-void spursSysServiceCleanupAfterSystemWorkload(SPUThread & spu, SpursKernelContext * ctxt);
-
-//
-// SPURS Taskset Policy Module functions
-//
-bool spursTasksetEntry(SPUThread & spu);
-bool spursTasksetSyscallEntry(SPUThread & spu);
-void spursTasksetResumeTask(SPUThread & spu);
-void spursTasksetStartTask(SPUThread & spu, CellSpursTaskArgument & taskArgs);
-s32 spursTasksetProcessRequest(SPUThread & spu, s32 request, u32 * taskId, u32 * isWaiting);
-void spursTasksetProcessPollStatus(SPUThread & spu, u32 pollStatus);
-bool spursTasksetPollStatus(SPUThread & spu);
-void spursTasksetExit(SPUThread & spu);
-void spursTasksetOnTaskExit(SPUThread & spu, u64 addr, u32 taskId, s32 exitCode, u64 args);
-s32 spursTasketSaveTaskContext(SPUThread & spu);
-void spursTasksetDispatch(SPUThread & spu);
-s32 spursTasksetProcessSyscall(SPUThread & spu, u32 syscallNum, u32 args);
-void spursTasksetInit(SPUThread & spu, u32 pollStatus);
-s32 spursTasksetLoadElf(SPUThread & spu, u32 * entryPoint, u32 * lowestLoadAddr, u64 elfAddr, bool skipWriteableSegments);
-
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 // Externs
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 
 extern Module cellSpurs;
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
+// Function prototypes
+//----------------------------------------------------------------------------
+
+//
 // SPURS utility functions
-//////////////////////////////////////////////////////////////////////////////
+//
+static void cellSpursModulePutTrace(CellSpursTracePacket * packet, u32 dmaTagId);
+static u32 cellSpursModulePollStatus(SPUThread & spu, u32 * status);
+static void cellSpursModuleExit(SPUThread & spu);
+
+static bool spursDma(SPUThread & spu, u32 cmd, u64 ea, u32 lsa, u32 size, u32 tag);
+static u32 spursDmaGetCompletionStatus(SPUThread & spu, u32 tagMask);
+static u32 spursDmaWaitForCompletion(SPUThread & spu, u32 tagMask, bool waitForAll = true);
+static void spursHalt(SPUThread & spu);
+
+//
+// SPURS kernel functions
+//
+static bool spursKernel1SelectWorkload(SPUThread & spu);
+static bool spursKernel2SelectWorkload(SPUThread & spu);
+static void spursKernelDispatchWorkload(SPUThread & spu, u64 widAndPollStatus);
+static bool spursKernelWorkloadExit(SPUThread & spu);
+bool spursKernelEntry(SPUThread & spu);
+
+//
+// SPURS system workload functions
+//
+static bool spursSysServiceEntry(SPUThread & spu);
+// TODO: Exit
+static void spursSysServiceIdleHandler(SPUThread & spu, SpursKernelContext * ctxt);
+static void spursSysServiceMain(SPUThread & spu, u32 pollStatus);
+static void spursSysServiceProcessRequests(SPUThread & spu, SpursKernelContext * ctxt);
+static void spursSysServiceActivateWorkload(SPUThread & spu, SpursKernelContext * ctxt);
+// TODO: Deactivate workload
+static void spursSysServiceUpdateShutdownCompletionEvents(SPUThread & spu, SpursKernelContext * ctxt, u32 wklShutdownBitSet);
+static void spursSysServiceTraceSaveCount(SPUThread & spu, SpursKernelContext * ctxt);
+static void spursSysServiceTraceUpdate(SPUThread & spu, SpursKernelContext * ctxt, u32 arg2, u32 arg3, u32 arg4);
+// TODO: Deactivate trace
+// TODO: System workload entry
+static void spursSysServiceCleanupAfterSystemWorkload(SPUThread & spu, SpursKernelContext * ctxt);
+
+//
+// SPURS taskset policy module functions
+//
+static bool spursTasksetEntry(SPUThread & spu);
+static bool spursTasksetSyscallEntry(SPUThread & spu);
+static void spursTasksetResumeTask(SPUThread & spu);
+static void spursTasksetStartTask(SPUThread & spu, CellSpursTaskArgument & taskArgs);
+static s32 spursTasksetProcessRequest(SPUThread & spu, s32 request, u32 * taskId, u32 * isWaiting);
+static void spursTasksetProcessPollStatus(SPUThread & spu, u32 pollStatus);
+static bool spursTasksetPollStatus(SPUThread & spu);
+static void spursTasksetExit(SPUThread & spu);
+static void spursTasksetOnTaskExit(SPUThread & spu, u64 addr, u32 taskId, s32 exitCode, u64 args);
+static s32 spursTasketSaveTaskContext(SPUThread & spu);
+static void spursTasksetDispatch(SPUThread & spu);
+static s32 spursTasksetProcessSyscall(SPUThread & spu, u32 syscallNum, u32 args);
+static void spursTasksetInit(SPUThread & spu, u32 pollStatus);
+static s32 spursTasksetLoadElf(SPUThread & spu, u32 * entryPoint, u32 * lowestLoadAddr, u64 elfAddr, bool skipWriteableSegments);
+
+//----------------------------------------------------------------------------
+// SPURS utility functions
+//----------------------------------------------------------------------------
 
 /// Output trace information
 void cellSpursModulePutTrace(CellSpursTracePacket * packet, u32 dmaTagId) {
@@ -167,9 +160,9 @@ void spursHalt(SPUThread & spu) {
     throw SpursModuleExit();
 }
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 // SPURS kernel functions
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 
 /// Select a workload to run
 bool spursKernel1SelectWorkload(SPUThread & spu) {
@@ -588,9 +581,9 @@ bool spursKernelEntry(SPUThread & spu) {
     return false;
 }
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 // SPURS system workload functions
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 
 /// Entry point of the system service
 bool spursSysServiceEntry(SPUThread & spu) {
@@ -939,14 +932,14 @@ void spursSysServiceUpdateShutdownCompletionEvents(SPUThread & spu, SpursKernelC
         for (u32 i = 0; i < CELL_SPURS_MAX_WORKLOAD; i++) {
             if (wklShutdownBitSet & (0x80000000u >> i)) {
                 spurs->m.wklEvent1[i] |= 0x01;
-                if (spurs->m.wklEvent1[i] & 0x02 || spurs->m.wklEvent1[i] & 0x10) {
+                if (spurs->m.wklEvent1[i].read_relaxed() & 0x02 || spurs->m.wklEvent1[i].read_relaxed() & 0x10) {
                     wklNotifyBitSet |= 0x80000000u >> i;
                 }
             }
 
             if (wklShutdownBitSet & (0x8000 >> i)) {
                 spurs->m.wklEvent2[i] |= 0x01;
-                if (spurs->m.wklEvent2[i] & 0x02 || spurs->m.wklEvent2[i] & 0x10) {
+                if (spurs->m.wklEvent2[i].read_relaxed() & 0x02 || spurs->m.wklEvent2[i].read_relaxed() & 0x10) {
                     wklNotifyBitSet |= 0x8000 >> i;
                 }
             }
@@ -1026,12 +1019,12 @@ void spursSysServiceCleanupAfterSystemWorkload(SPUThread & spu, SpursKernelConte
         spursDma(spu, MFC_GETLLAR_CMD, ctxt->spurs.addr() + offsetof(CellSpurs, m.wklState1), 0x2D80/*LSA*/, 0x80/*size*/, 0/*tag*/);
         auto spurs = vm::get_ptr<CellSpurs>(spu.ls_offset + 0x2D80 - offsetof(CellSpurs, m.wklState1));
 
-        if (spurs->m.sysSrvWorkload[ctxt->spuNum] == 0xFF) {
+        if (spurs->m.sysSrvPreemptWklId[ctxt->spuNum] == 0xFF) {
             return;
         }
 
-        wklId = spurs->m.sysSrvWorkload[ctxt->spuNum];
-        spurs->m.sysSrvWorkload[ctxt->spuNum] = 0xFF;
+        wklId = spurs->m.sysSrvPreemptWklId[ctxt->spuNum];
+        spurs->m.sysSrvPreemptWklId[ctxt->spuNum] = 0xFF;
     } while (spursDma(spu, MFC_PUTLLC_CMD, ctxt->spurs.addr() + offsetof(CellSpurs, m.wklState1), 0x2D80/*LSA*/, 0x80/*size*/, 0/*tag*/) == false);
 
     spursSysServiceActivateWorkload(spu, ctxt);
@@ -1064,9 +1057,9 @@ void spursSysServiceCleanupAfterSystemWorkload(SPUThread & spu, SpursKernelConte
     ctxt->wklCurrentId = wklIdSaved;
 }
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 // SPURS taskset policy module functions
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 
 enum SpursTasksetRequest {
     SPURS_TASKSET_REQUEST_POLL_SIGNAL   = -1,

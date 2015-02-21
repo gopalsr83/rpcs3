@@ -163,10 +163,12 @@ u32 LoadSpuImage(vfsStream& stream, u32& spu_ep);
 s32 spu_image_import(sys_spu_image& img, u32 src, u32 type);
 std::shared_ptr<SpuGroupInfo> spu_thread_group_create(const std::string& name, u32 num, s32 prio, s32 type, u32 container);
 SPUThread* spu_thread_initialize(std::shared_ptr<SpuGroupInfo>& group, u32 spu_num, sys_spu_image& img, const std::string& name, u32 option, u64 a1, u64 a2, u64 a3, u64 a4, std::function<void(SPUThread&)> task = nullptr);
+void sys_spu_thread_group_attribute_initialize(vm::ptr<sys_spu_thread_group_attribute> attr);
 
 // SysCalls
 s32 sys_spu_initialize(u32 max_usable_spu, u32 max_raw_spu);
 s32 sys_spu_image_open(vm::ptr<sys_spu_image> img, vm::ptr<const char> path);
+s32 sys_spu_image_close(vm::ptr<sys_spu_image> img);
 s32 sys_spu_thread_initialize(vm::ptr<u32> thread, u32 group, u32 spu_num, vm::ptr<sys_spu_image> img, vm::ptr<sys_spu_thread_attribute> attr, vm::ptr<sys_spu_thread_argument> arg);
 s32 sys_spu_thread_set_argument(u32 id, vm::ptr<sys_spu_thread_argument> arg);
 s32 sys_spu_thread_group_destroy(u32 id);

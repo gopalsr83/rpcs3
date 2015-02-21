@@ -13,6 +13,13 @@
 
 SysCallBase sys_event("sys_event");
 
+void sys_event_queue_attribute_initialize(vm::ptr<sys_event_queue_attr> attr)
+{
+	attr->protocol = SYS_SYNC_PRIORITY;
+	attr->type     = SYS_PPU_QUEUE;
+	attr->name[0]  = '\0';
+}
+
 u32 event_queue_create(u32 protocol, s32 type, u64 name_u64, u64 event_queue_key, s32 size)
 {
 	std::shared_ptr<EventQueue> eq(new EventQueue(protocol, type, name_u64, event_queue_key, size));

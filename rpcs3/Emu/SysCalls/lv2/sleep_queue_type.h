@@ -26,6 +26,12 @@ enum
 	SYS_SYNC_ATTR_RECURSIVE_MASK = 0xF0, //???
 };
 
+// attr_pshared
+enum
+{
+	SYS_SYNC_NOT_PROCESS_SHARED = 0x200
+};
+
 class sleep_queue_t
 {
 	std::vector<u32> m_waiting;

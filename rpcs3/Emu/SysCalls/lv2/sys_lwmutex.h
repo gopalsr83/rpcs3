@@ -31,7 +31,7 @@ struct sys_lwmutex_t
 };
 
 // Aux
-s32 lwmutex_create(sys_lwmutex_t& lwmutex, u32 protocol, u32 recursive, u64 name_u64);
+void sys_lwmutex_attribute_initialize(vm::ptr<sys_lwmutex_attribute_t> attr);
 
 class PPUThread;
 
