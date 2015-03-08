@@ -53,7 +53,7 @@ static void spursSysServiceActivateWorkload(SPUThread & spu, SpursKernelContext 
 // TODO: Deactivate workload
 static void spursSysServiceUpdateShutdownCompletionEvents(SPUThread & spu, SpursKernelContext * ctxt, u32 wklShutdownBitSet);
 static void spursSysServiceTraceSaveCount(SPUThread & spu, SpursKernelContext * ctxt);
-static void spursSysServiceTraceUpdate(SPUThread & spu, SpursKernelContext * ctxt, u32 arg2, u32 arg3, u32 arg4);
+static void spursSysServiceTraceUpdate(SPUThread & spu, SpursKernelContext * ctxt, u32 arg2, u32 arg3, u32 forceNotify);
 // TODO: Deactivate trace
 // TODO: System workload entry
 static void spursSysServiceCleanupAfterSystemWorkload(SPUThread & spu, SpursKernelContext * ctxt);
@@ -960,7 +960,7 @@ void spursSysServiceTraceSaveCount(SPUThread & spu, SpursKernelContext * ctxt) {
 }
 
 /// Update trace control
-void spursSysServiceTraceUpdate(SPUThread & spu, SpursKernelContext * ctxt, u32 arg2, u32 arg3, u32 arg4) {
+void spursSysServiceTraceUpdate(SPUThread & spu, SpursKernelContext * ctxt, u32 arg2, u32 arg3, u32 forceNotify) {
     bool notify;
 
     u8 sysSrvMsgUpdateTrace;
@@ -968,20 +968,20 @@ void spursSysServiceTraceUpdate(SPUThread & spu, SpursKernelContext * ctxt, u32 
         spursDma(spu, MFC_GETLLAR_CMD, ctxt->spurs.addr() + offsetof(CellSpurs, m.wklState1), 0x2D80/*LSA*/, 0x80/*size*/, 0/*tag*/);
         auto spurs = vm::get_ptr<CellSpurs>(spu.ls_offset + 0x2D80 - offsetof(CellSpurs, m.wklState1));
 
-        sysSrvMsgUpdateTrace           = spurs->m.sysSrvMsgUpdateTrace;
-        spurs->m.sysSrvMsgUpdateTrace &= ~(1 << ctxt->spuNum);
-        spurs->m.xCC                  &= ~(1 << ctxt->spuNum);
-        spurs->m.xCC                  |= arg2 << ctxt->spuNum;
+        sysSrvMsgUpdateTrace             = spurs->m.sysSrvMsgUpdateTrace;
+        spurs->m.sysSrvMsgUpdateTrace   &= ~(1 << ctxt->spuNum);
+        spurs->m.sysSrvTraceInitialised &= ~(1 << ctxt->spuNum);
+        spurs->m.sysSrvTraceInitialised |= arg2 << ctxt->spuNum;
 
         notify = false;
-        if (((sysSrvMsgUpdateTrace & (1 << ctxt->spuNum)) != 0) && (spurs->m.sysSrvMsgUpdateTrace == 0) && (spurs->m.xCD != 0)) {
-            spurs->m.xCD = 0;
-            notify       = true;
+        if (((sysSrvMsgUpdateTrace & (1 << ctxt->spuNum)) != 0) && (spurs->m.sysSrvMsgUpdateTrace == 0) && (spurs->m.sysSrvNotifyUpdateTraceComplete != 0)) {
+            spurs->m.sysSrvNotifyUpdateTraceComplete = 0;
+            notify                                   = true;
         }
 
-        if (arg4 && spurs->m.xCD != 0) {
-            spurs->m.xCD = 0;
-            notify       = true;
+        if (forceNotify && spurs->m.sysSrvNotifyUpdateTraceComplete != 0) {
+            spurs->m.sysSrvNotifyUpdateTraceComplete = 0;
+            notify                                   = true;
         }
     } while (spursDma(spu, MFC_PUTLLC_CMD, ctxt->spurs.addr() + offsetof(CellSpurs, m.wklState1), 0x2D80/*LSA*/, 0x80/*size*/, 0/*tag*/) == false);
 
