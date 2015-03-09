@@ -534,12 +534,12 @@ bool spursKernelWorkloadExit(SPUThread & spu) {
 
 /// SPURS kernel entry point
 bool spursKernelEntry(SPUThread & spu) {
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (Emu.IsStopped()) {
-            return false;
-        }
-    }
+    //while (true) {
+    //    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //    if (Emu.IsStopped()) {
+    //        return false;
+    //    }
+    //}
 
     auto ctxt = vm::get_ptr<SpursKernelContext>(spu.ls_offset + 0x100);
     memset(ctxt, 0, sizeof(SpursKernelContext));
@@ -1113,19 +1113,24 @@ bool spursTasksetEntry(SPUThread & spu) {
 bool spursTasksetSyscallEntry(SPUThread & spu) {
     auto ctxt = vm::get_ptr<SpursTasksetContext>(spu.ls_offset + 0x2700);
 
-    // Save task context
-    ctxt->savedContextLr = spu.GPR[0];
-    ctxt->savedContextSp = spu.GPR[1];
-    for (auto i = 0; i < 48; i++) {
-        ctxt->savedContextR80ToR127[i] = spu.GPR[80 + i];
+    try {
+        // Save task context
+        ctxt->savedContextLr = spu.GPR[0];
+        ctxt->savedContextSp = spu.GPR[1];
+        for (auto i = 0; i < 48; i++) {
+            ctxt->savedContextR80ToR127[i] = spu.GPR[80 + i];
+        }
+
+        // Handle the syscall
+        spu.GPR[3]._u32[3] = spursTasksetProcessSyscall(spu, spu.GPR[3]._u32[3], spu.GPR[4]._u32[3]);
+
+        // Resume the previously executing task if the syscall did not cause a context switch
+        if (spu.m_is_branch == false) {
+            spursTasksetResumeTask(spu);
+        }
     }
 
-    // Handle the syscall
-    spu.GPR[3]._u32[3] = spursTasksetProcessSyscall(spu, spu.GPR[3]._u32[3], spu.GPR[4]._u32[3]);
-
-    // Resume the previously executing task if the syscall did not cause a context switch
-    if (spu.m_is_branch == false) {
-        spursTasksetResumeTask(spu);
+    catch (SpursModuleExit) {
     }
 
     return false;
